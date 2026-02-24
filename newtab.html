@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friction Tab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">Friendly Enforcement</p>
+      <h1>State your mission for this tab.</h1>
+      <p class="sub">You're the boss. I'm just here to nag you lovingly in five minutes.</p>
+    </header>
+
+    <section class="card">
+      <form id="intent-form" autocomplete="off">
+        <label for="intent" class="label">What were you about to do?</label>
+        <div class="input-row">
+          <input id="intent" name="intent" type="text" maxlength="160" placeholder="Example: Read the design doc for 10 minutes" required />
+          <button type="submit" class="primary">Lock it in</button>
+        </div>
+      </form>
+      <p class="micro" id="status">I'll remind you in 5 minutes.</p>
+      <button id="notify-btn" class="ghost">Enable notifications</button>
+    </section>
+
+    <section class="card muted" id="latest-card">
+      <div class="card-head">
+        <p class="eyebrow">Latest pledge</p>
+        <span class="pill" id="reminder-pill">No timer</span>
+      </div>
+      <p class="latest-text" id="latest-text">No task captured yet.</p>
+      <p class="micro" id="latest-meta"></p>
+    </section>
+  </main>
+  <script src="newtab.js"></script>
+</body>
+</html>
