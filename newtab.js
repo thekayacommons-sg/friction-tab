@@ -251,6 +251,7 @@ async function completeTask(taskId) {
   }
 
   statusEl.textContent = "Task marked complete. Proud of you.";
+  launchConfetti();
   await refreshTasks(updated);
 }
 
@@ -333,4 +334,26 @@ function storageSet(items) {
   return new Promise((resolve) => {
     chrome.storage.local.set(items, resolve);
   });
+}
+
+function launchConfetti() {
+  const layer = document.getElementById("confetti-layer");
+  if (!layer) return;
+
+  const colors = ["#eb5e28", "#7cf3c0", "#f8fafc", "#3b82f6", "#a855f7"];
+  const pieces = 60;
+
+  for (let i = 0; i < pieces; i += 1) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.background = colors[i % colors.length];
+    piece.style.animationDelay = `${Math.random() * 0.2}s`;
+    piece.style.transform = `rotate(${Math.random() * 180}deg)`;
+    layer.appendChild(piece);
+
+    setTimeout(() => {
+      piece.remove();
+    }, 1200);
+  }
 }
