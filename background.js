@@ -1,4 +1,4 @@
-import { getTaskStatus } from "./utilities.js";
+import { getTaskStatus, storageGet, storageSet } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
 const REMINDER_MINUTES = 5;
@@ -14,29 +14,28 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Whenever ANY alarm goes off, the extension checks if it is its reminder alarm. If so, it searches for the task details by using the
 // task ID stored under reminderTaskId, and shows a notification to check on status of the task
-chrome.alarms.onAlarm.addListener((alarm) => {
+chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== REMINDER_ALARM) return;
 
-  chrome.storage.local.get({ [TASKS_KEY]: [], [REMINDER_KEY]: null }, (data) => {
-    const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
-    const reminderTaskId = data[REMINDER_KEY];
+  const data = await storageGet({ [TASKS_KEY]: [], [REMINDER_KEY]: null });
+  const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
+  const reminderTaskId = data[REMINDER_KEY];
 
-    const entry = findReminderTarget(tasks, reminderTaskId);
-    if (!entry) return;
+  const entry = findReminderTarget(tasks, reminderTaskId);
+  if (!entry) return;
 
-    const notificationId = `reminder-${entry.id}`;
-    chrome.notifications.create(notificationId, {
-      type: "basic",
-      iconUrl: ICON_PATH,
-      title: "Still on that mission?",
-      message: `You promised to work on: ${entry.task}`,
-      priority: 2,
-      requireInteraction: true,
-      buttons: [
-        { title: "Yes, still at it" },
-        { title: "No, I drifted..." },
-      ]
-    });
+  const notificationId = `reminder-${entry.id}`;
+  chrome.notifications.create(notificationId, {
+    type: "basic",
+    iconUrl: ICON_PATH,
+    title: "Still on that mission?",
+    message: `You promised to work on: ${entry.task}`,
+    priority: 2,
+    requireInteraction: true,
+    buttons: [
+      { title: "Yes, still at it" },
+      { title: "No, I drifted..." },
+    ]
   });
 });
 
@@ -61,7 +60,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
         requireInteraction: true,
         buttons: [
           { title: "Yes, all settled" },
-          { title: "Still working on it" },
+          { title: "No, still working on it" },
         ]
       });
     } else {
@@ -105,63 +104,59 @@ function getDelayMinutes(intervalMs) {
   return Math.max(0.25, intervalMs / 60000);
 }
 
-function markTaskComplete(taskId) {
-  chrome.storage.local.get({ [TASKS_KEY]: [], [REMINDER_KEY]: null }, (data) => {
-    const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
-    const updated = tasks.map((task) => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        status: "completed",
-        completedAt: Date.now(),
-        reminderAt: null,
-        reminderIntervalMs: null,
-      };
-    });
+async function markTaskComplete(taskId) {
+  const data = await storageGet({ [TASKS_KEY]: [], [REMINDER_KEY]: null });
+  const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
+  const updated = tasks.map((task) => {
+    if (task.id !== taskId) return task;
+    return {
+      ...task,
+      status: "completed",
+      completedAt: Date.now(),
+      reminderAt: null,
+      reminderIntervalMs: null,
+    };
+  });
 
-    chrome.storage.local.set({ [TASKS_KEY]: updated, [REMINDER_KEY]: null }, () => {
-      chrome.alarms.clear(REMINDER_ALARM);
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: ICON_PATH,
-        title: "Well done!",
-        message: "Mission accomplished.",
-        requireInteraction: false,
-      });
-    });
+  await storageSet({ [TASKS_KEY]: updated, [REMINDER_KEY]: null });
+  chrome.alarms.clear(REMINDER_ALARM);
+  chrome.notifications.create({
+    type: "basic",
+    iconUrl: ICON_PATH,
+    title: "Well done!",
+    message: "Mission accomplished.",
+    requireInteraction: false,
   });
 }
 
-function extendTaskReminder(taskId, extensionType) {
-  chrome.storage.local.get({ [TASKS_KEY]: [], [REMINDER_KEY]: null }, (data) => {
-    const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
-    const idx = tasks.findIndex((t) => t.id === taskId && t.status !== "completed");
-    if (idx === -1) return;
+async function extendTaskReminder(taskId, extensionType) {
+  const data = await storageGet({ [TASKS_KEY]: [], [REMINDER_KEY]: null });
+  const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
+  const idx = tasks.findIndex((t) => t.id === taskId && t.status !== "completed");
+  if (idx === -1) return;
 
-    const current = tasks[idx];
-    const prevInterval = current.reminderIntervalMs || BASE_REMINDER_MS;
-    // Drifting results in a more aggressive reminder interval than staying focused
-    const nextInterval = extensionType === "focused" ? prevInterval * 3 : prevInterval * 1.5;
-    const nextReminderAt = Date.now() + nextInterval;
+  const current = tasks[idx];
+  const prevInterval = current.reminderIntervalMs || BASE_REMINDER_MS;
+  // Drifting results in a more aggressive reminder interval than staying focused
+  const nextInterval = extensionType === "focused" ? prevInterval * 3 : prevInterval * 1.5;
+  const nextReminderAt = Date.now() + nextInterval;
 
-    tasks[idx] = {
-      ...current,
-      reminderIntervalMs: nextInterval,
-      reminderAt: nextReminderAt,
-    };
+  tasks[idx] = {
+    ...current,
+    reminderIntervalMs: nextInterval,
+    reminderAt: nextReminderAt,
+  };
 
-    chrome.storage.local.set({ [TASKS_KEY]: tasks, [REMINDER_KEY]: taskId }, () => {
-      chrome.alarms.clear(REMINDER_ALARM, () => {
-        chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: getDelayMinutes(nextInterval) });
-      });
+  await storageSet({ [TASKS_KEY]: tasks, [REMINDER_KEY]: taskId });
+  chrome.alarms.clear(REMINDER_ALARM, () => {
+    chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: getDelayMinutes(nextInterval) });
+  });
 
-      chrome.notifications.create({
-        type: "basic",
-        iconUrl: ICON_PATH,
-        title: "Keep going. I've refreshed the reminder.",
-        message: `I'll check again in ${Math.ceil(nextInterval / 60000)} min. If you finish it before that, mark it complete so I don't annoy you.`,
-        requireInteraction: false,
-      });
-    });
+  chrome.notifications.create({
+    type: "basic",
+    iconUrl: ICON_PATH,
+    title: "Keep going. I've refreshed the reminder.",
+    message: `I'll check again in ${Math.ceil(nextInterval / 60000)} min. If you finish it before that, mark it complete so I don't annoy you.`,
+    requireInteraction: false,
   });
 }
