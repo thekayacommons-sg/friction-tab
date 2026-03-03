@@ -1,3 +1,14 @@
+import {
+  sortTasks,
+  getTaskStatus,
+  hasActiveTask,
+  getActiveTask,
+  formatTime,
+  generateId,
+  storageGet,
+  storageSet,
+} from "./utilities.js";
+
 const REMINDER_ALARM = "friction-tab-reminder";
 const BASE_REMINDER_MINUTES = 0.25;
 const BASE_REMINDER_MS = BASE_REMINDER_MINUTES * 60 * 1000;
@@ -214,32 +225,6 @@ function formatStatus(status) {
   return status === "completed" ? "Completed" : "In progress";
 }
 
-function getTaskStatus(task) {
-  return task?.status === "completed" ? "completed" : "in-progress";
-}
-
-function hasActiveTask(tasks) {
-  return Array.isArray(tasks) && tasks.some((task) => getTaskStatus(task) === "in-progress");
-}
-
-function getActiveTask(tasks) {
-  return Array.isArray(tasks) ? tasks.find((task) => getTaskStatus(task) === "in-progress") : null;
-}
-
-function formatTime(timestamp) {
-  try {
-    return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  } catch (e) {
-    return "unknown time";
-  }
-}
-
-function generateId() {
-  if (window.crypto?.randomUUID) {
-    return window.crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 async function completeTask(taskId) {
   const tasks = await loadTasks();
@@ -291,10 +276,6 @@ async function saveTasks(tasks) {
   await storageSet({ [TASKS_KEY]: sortTasks(tasks) });
 }
 
-function sortTasks(tasks) {
-  return [...tasks].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-}
-
 function refreshNotificationCTAResult() {
   if (!("Notification" in window)) {
     notifyBtn.textContent = "Notifications not supported in this browser.";
@@ -334,18 +315,6 @@ async function clearReminder() {
   await storageSet({ [REMINDER_KEY]: null });
   await new Promise((resolve) => {
     chrome.alarms.clear(REMINDER_ALARM, resolve);
-  });
-}
-
-function storageGet(keysWithDefaults) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(keysWithDefaults, resolve);
-  });
-}
-
-function storageSet(items) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(items, resolve);
   });
 }
 

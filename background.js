@@ -1,3 +1,5 @@
+import { getTaskStatus } from "./utilities.js";
+
 const REMINDER_ALARM = "friction-tab-reminder";
 const REMINDER_MINUTES = 5;
 const BASE_REMINDER_MS = REMINDER_MINUTES * 60 * 1000;
@@ -83,7 +85,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
   }
 });
 
-// If the user clicks on the notification itself (instead of the buttons), the notification is simply cleared
+// If the user clicks on the notification itself (instead of the buttons), the notification is simply cleared and reminder extended
 chrome.notifications.onClicked.addListener((notificationId) => {
   chrome.notifications.clear(notificationId);
   const taskId = notificationId.substring(notificationId.indexOf("-") + 1);
@@ -91,14 +93,12 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 });
 
 function findReminderTarget(tasks, reminderTaskId) {
-  const inProgress = (task) => (task?.status === "completed" ? false : true);
-
   if (reminderTaskId) {
-    const match = tasks.find((task) => task.id === reminderTaskId && inProgress(task));
+    const match = tasks.find((task) => task.id === reminderTaskId && getTaskStatus(task) === "in-progress");
     if (match) return match;
   }
 
-  return tasks.find((task) => inProgress(task));
+  return tasks.find((task) => getTaskStatus(task) === "in-progress");
 }
 
 function getDelayMinutes(intervalMs) {
