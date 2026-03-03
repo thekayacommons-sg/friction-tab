@@ -14,6 +14,10 @@ const reminderPill = document.getElementById("reminder-pill");
 const notifyBtn = document.getElementById("notify-btn");
 const taskListEl = document.getElementById("task-list");
 const clearBtn = document.getElementById("clear-btn");
+const modalEl = document.getElementById("focus-modal");
+const modalCompleteBtn = document.getElementById("modal-complete");
+const modalDismissBtn = document.getElementById("modal-dismiss");
+let modalDismissed = false;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -53,6 +57,10 @@ form.addEventListener("submit", async (event) => {
   const updatedTasks = sortTasks([entry, ...tasks]);
   await saveTasks(updatedTasks);
   await scheduleReminder(entry.id, entry.reminderIntervalMs);
+
+  // Do not nag with the modal immediately after creating a task; wait until the next tab load
+  modalDismissed = true;
+  if (modalEl) modalEl.hidden = true;
 
   statusEl.textContent = "Locked. I will tap your shoulder in 5 minutes.";
   input.value = "";
@@ -114,6 +122,7 @@ async function refreshTasks(prefetched) {
   const tasks = sortTasks(prefetched ?? (await loadTasks()));
   renderHeadline(tasks);
   renderTaskList(tasks);
+  promptActiveTaskModalIfPresent(tasks);
 }
 
 // Populates the headline task HTML elements based on the most recent in-progress task
@@ -211,6 +220,10 @@ function getTaskStatus(task) {
 
 function hasActiveTask(tasks) {
   return Array.isArray(tasks) && tasks.some((task) => getTaskStatus(task) === "in-progress");
+}
+
+function getActiveTask(tasks) {
+  return Array.isArray(tasks) ? tasks.find((task) => getTaskStatus(task) === "in-progress") : null;
 }
 
 function formatTime(timestamp) {
@@ -333,6 +346,37 @@ function storageGet(keysWithDefaults) {
 function storageSet(items) {
   return new Promise((resolve) => {
     chrome.storage.local.set(items, resolve);
+  });
+}
+
+function promptActiveTaskModalIfPresent(tasks) {
+  if (!modalEl || modalDismissed) return;
+  const active = getActiveTask(tasks);
+  if (active) {
+    modalEl.hidden = false;
+  } else {
+    modalEl.hidden = true;
+  }
+}
+
+if (modalCompleteBtn) {
+  modalCompleteBtn.addEventListener("click", async () => {
+    const tasks = await loadTasks();
+    const active = getActiveTask(tasks);
+    if (!active) {
+      modalEl.hidden = true;
+      return;
+    }
+    await completeTask(active.id);
+    modalEl.hidden = true;
+    modalDismissed = true;
+  });
+}
+
+if (modalDismissBtn) {
+  modalDismissBtn.addEventListener("click", () => {
+    modalEl.hidden = true;
+    modalDismissed = true;
   });
 }
 
