@@ -28,6 +28,7 @@ const clearBtn = document.getElementById("clear-btn");
 const modalEl = document.getElementById("focus-modal");
 const modalCompleteBtn = document.getElementById("modal-complete");
 const modalDismissBtn = document.getElementById("modal-dismiss");
+const modalTaskName = document.getElementById("modal-task-name");
 let modalDismissed = false;
 
 form.addEventListener("submit", async (event) => {
@@ -322,8 +323,12 @@ function promptActiveTaskModalIfPresent(tasks) {
   if (!modalEl || modalDismissed) return;
   const active = getActiveTask(tasks);
   if (active) {
+    if (modalTaskName) {
+      modalTaskName.textContent = active.task;
+    }
     modalEl.hidden = false;
   } else {
+    if (modalTaskName) modalTaskName.textContent = "";
     modalEl.hidden = true;
   }
 }

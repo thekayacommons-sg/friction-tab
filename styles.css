@@ -290,19 +290,19 @@ button {
 }
 
 .modal-surface {
-  width: min(480px, 90vw);
+  width: min(640px, 92vw);
   background: #0b1021;
   color: var(--text);
   border: 2px solid var(--accent);
-  border-radius: 18px;
-  padding: 24px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 36px 96px rgba(0, 0, 0, 0.7);
   text-align: left;
 }
 
 .modal-surface h2 {
-  margin: 8px 0 10px;
-  font-size: 26px;
+  margin: 10px 0 12px;
+  font-size: 30px;
   letter-spacing: -0.01em;
 }
 
@@ -314,13 +314,30 @@ button {
   align-items: center;
 }
 
-.modal-actions .primary,
+.modal-actions .primary {
+  width: auto;
+  min-width: 160px;
+  border: none;
+  box-shadow: 0 14px 32px rgba(235, 94, 40, 0.45);
+}
+
 .modal-actions .ghost {
   width: auto;
   min-width: 140px;
   border-width: 1px;
   border-style: dashed;
-  margin-top: 0px;
+  margin-top: 0;
+}
+
+.modal-task {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 @media (max-width: 720px) {
