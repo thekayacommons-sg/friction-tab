@@ -13,14 +13,14 @@
 <body>
   <main class="shell">
     <header class="hero">
-      <p class="eyebrow">Friendly Enforcement</p>
-      <h1>State your mission for this tab.</h1>
-      <p class="sub">You're the boss. I'm just here to nag you lovingly in five minutes.</p>
+      <p class="eyebrow">Friction Tab</p>
+      <h1>State the mission at hand.</h1>
+      <p class="sub">Multitasking is a myth. This extension helps you stay singularly focused.</p>
     </header>
 
     <section class="card">
       <form id="intent-form" autocomplete="off">
-        <label for="intent" class="label">What were you about to do?</label>
+        <label for="intent" class="eyebrow">What were you about to do?</label>
         <div class="input-row">
           <input id="intent" name="intent" type="text" maxlength="160" placeholder="Example: Read the design doc for 10 minutes" required />
           <button type="submit" class="primary">Lock it in</button>
@@ -35,8 +35,15 @@
         <p class="eyebrow">Latest pledge</p>
         <span class="pill" id="reminder-pill">No timer</span>
       </div>
-      <p class="latest-text" id="latest-text">No task captured yet.</p>
-      <p class="micro" id="latest-meta"></p>
+      <div class="latest-row">
+        <div class="latest-copy">
+          <p class="latest-text" id="latest-text">No task captured yet.</p>
+          <p class="micro" id="latest-meta"></p>
+        </div>
+        <div class="latest-actions" id="latest-actions">
+          <button id="latest-complete" class="task-action complete" type="button">Mark complete</button>
+        </div>
+      </div>
       <ul class="task-list" id="task-list" aria-live="polite"></ul>
       <button id="clear-btn" class="task-clear" type="button">Clear all tasks</button>
     </section>
@@ -47,10 +54,10 @@
       <p class="eyebrow">Mission Check</p>
       <h2 id="focus-modal-title">Did you finish your active mission?</h2>
       <p class="modal-task" id="modal-task-name"></p>
-      <p id="focus-modal-body">If yes, mark it complete. If not, close this and get back to it.</p>
+      <p id="focus-modal-body">If yes, mark it complete so I don't annoy you with unnecessary reminders.</p>
       <div class="modal-actions">
         <button id="modal-complete" class="primary">Mark complete</button>
-        <button id="modal-dismiss" class="ghost">Still working</button>
+        <button id="modal-dismiss" class="ghost">Still working on it</button>
       </div>
     </div>
   </div>

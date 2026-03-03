@@ -15,11 +15,14 @@ export function getActiveTask(tasks) {
 }
 
 export function formatTime(timestamp) {
-  try {
-    return new Date(timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  } catch (error) {
-    return "unknown time";
-  }
+    try {
+        const date = new Date(timestamp);
+        const time = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        const dateStr = date.toLocaleDateString([], { day: "2-digit", month: "2-digit" });
+        return `${dateStr} ${time}`;
+    } catch (error) {
+        return "unknown time";
+    }
 }
 
 export function generateId() {

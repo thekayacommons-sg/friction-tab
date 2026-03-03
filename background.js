@@ -33,8 +33,8 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       priority: 2,
       requireInteraction: true,
       buttons: [
-        { title: "Yes, still focused" },
-        { title: "No, I drifted" },
+        { title: "Yes, still at it" },
+        { title: "No, I drifted..." },
       ]
     });
   });
@@ -49,19 +49,19 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
     const taskId = notificationId.replace("reminder-", "");
     chrome.notifications.clear(notificationId);
 
-    // If user clicks "Yes, still focused", extension shows a follow-up notification to confirm if they have completed the task or not.
-    // If "No, I drifted", extension simply encourages them to get back on track.
+    // If user clicks "Yes, still at it", extension shows a follow-up notification to confirm if they have completed the task or not.
+    // If "No, I drifted...", extension simply encourages them to get back on track.
     if (buttonIndex === 0) {
       const completionId = `completion-${taskId}`;
       chrome.notifications.create(completionId, {
         type: "basic",
         iconUrl: ICON_PATH,
-        title: "Are you done?",
-        message: "If yes, I'll mark it complete.",
+        title: "Are you done by any chance?",
+        message: "If yes, let's get it off the list.",
         requireInteraction: true,
         buttons: [
-          { title: "Yes, done" },
-          { title: "Still working" },
+          { title: "Yes, all settled" },
+          { title: "Still working on it" },
         ]
       });
     } else {
@@ -158,8 +158,8 @@ function extendTaskReminder(taskId, extensionType) {
       chrome.notifications.create({
         type: "basic",
         iconUrl: ICON_PATH,
-        title: "Stay focused.",
-        message: `Time refreshed: I'll check again in ${Math.ceil(nextInterval / 60000)} min. If you finish it, mark it complete.`,
+        title: "Keep going. I've refreshed the reminder.",
+        message: `I'll check again in ${Math.ceil(nextInterval / 60000)} min. If you finish it before that, mark it complete so I don't annoy you.`,
         requireInteraction: false,
       });
     });

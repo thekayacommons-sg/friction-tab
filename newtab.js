@@ -22,6 +22,8 @@ const statusEl = document.getElementById("status");
 const latestText = document.getElementById("latest-text");
 const latestMeta = document.getElementById("latest-meta");
 const reminderPill = document.getElementById("reminder-pill");
+const latestActions = document.getElementById("latest-actions");
+const latestCompleteBtn = document.getElementById("latest-complete");
 const notifyBtn = document.getElementById("notify-btn");
 const taskListEl = document.getElementById("task-list");
 const clearBtn = document.getElementById("clear-btn");
@@ -74,7 +76,7 @@ form.addEventListener("submit", async (event) => {
   modalDismissed = true;
   if (modalEl) modalEl.hidden = true;
 
-  statusEl.textContent = "Locked. I will tap your shoulder in 5 minutes.";
+  statusEl.textContent = `Locked in. I will tap your shoulder in ${BASE_REMINDER_MINUTES} minutes.`;
   input.value = "";
   await refreshTasks(updatedTasks);
 });
@@ -87,6 +89,18 @@ taskListEl.addEventListener("click", (event) => {
   if (!taskId) return;
   completeTask(taskId);
 });
+
+if (latestCompleteBtn) {
+  latestCompleteBtn.addEventListener("click", async () => {
+    const tasks = await loadTasks();
+    const active = getActiveTask(tasks);
+    if (!active) {
+      statusEl.textContent = "No active mission to complete.";
+      return;
+    }
+    await completeTask(active.id);
+  });
+}
 
 notifyBtn.addEventListener("click", async () => {
   await ensureNotificationPermission(true);
@@ -137,19 +151,25 @@ async function refreshTasks(prefetched) {
   promptActiveTaskModalIfPresent(tasks);
 }
 
-// Populates the headline task HTML elements based on the most recent in-progress task
+// Populates the headline task HTML elements based on the most recent task
 function renderHeadline(tasks) {
   if (!tasks.length) {
     latestText.textContent = "No task captured yet.";
-    latestMeta.textContent = "Tell me what this tab is for and I will police it.";
+    latestMeta.textContent = "Once you're getting down to real work, tell me what you're up to and let's keep you honest.";
     reminderPill.textContent = "No timer";
+    if (latestActions) latestActions.classList.remove("visible");
+    if (latestCompleteBtn) latestCompleteBtn.disabled = true;
     return;
   }
 
   const newest = tasks[0];
   const newestState = getTaskStatus(newest);
   latestText.textContent = newest.task;
-  latestMeta.textContent = `${formatStatus(newestState)} · Logged ${formatTime(newest.createdAt)}.`;
+  latestMeta.textContent = buildTaskMeta(newest);
+
+  const isNewestActive = newestState === "in-progress";
+  if (latestActions) latestActions.classList.toggle("visible", isNewestActive);
+  if (latestCompleteBtn) latestCompleteBtn.disabled = !isNewestActive;
 
   const active = tasks.find((task) => getTaskStatus(task) === "in-progress");
   if (active?.reminderAt) {
@@ -166,15 +186,16 @@ function renderHeadline(tasks) {
 function renderTaskList(tasks) {
   taskListEl.replaceChildren();
 
-  if (!tasks.length) {
-    const empty = document.createElement("li");
-    empty.className = "task-item task-empty";
-    empty.textContent = "No missions logged yet.";
-    taskListEl.appendChild(empty);
+  const visibleTasks = tasks.slice(1); // First task is displayed in the headline
+
+  if (!visibleTasks.length) {
+    taskListEl.style.display = "none"; // Hide whole task list if empty to avoid unnecessary padding and margin
     return;
   }
 
-  tasks.forEach((task) => {
+  taskListEl.style.display = "flex";
+
+  visibleTasks.forEach((task) => {
     const item = document.createElement("li");
     const state = getTaskStatus(task);
     item.className = `task-item ${state}`;
@@ -257,13 +278,13 @@ async function completeTask(taskId) {
 async function clearAllTasks() {
   const tasks = await loadTasks();
   if (!tasks.length) {
-    statusEl.textContent = "Nothing to clear. Stay targeted.";
+    statusEl.textContent = "Nothing to clear.";
     return;
   }
 
   await saveTasks([]);
   await clearReminder();
-  statusEl.textContent = "Clean slate activated. Declare a new mission.";
+  statusEl.textContent = "Clean slate activated. Declare a new mission whenever you're ready.";
   await refreshTasks([]);
 }
 

@@ -67,7 +67,6 @@ body {
 .label {
   display: block;
   font-weight: 600;
-  margin-bottom: 10px;
 }
 
 .input-row {
@@ -75,6 +74,7 @@ body {
   grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: center;
+  margin-top: 10px;
 }
 
 input[type="text"] {
@@ -148,9 +148,38 @@ button {
   font-size: 12px;
 }
 
+
+.latest-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.latest-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .latest-text {
   font-size: 20px;
-  margin: 10px 0 4px;
+  margin: 0;
+}
+
+#latest-meta {
+  margin: 0;
+}
+
+.latest-actions {
+  display: none;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.latest-actions.visible {
+  display: flex;
 }
 
 #status {
