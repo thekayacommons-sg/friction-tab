@@ -43,3 +43,18 @@ export function storageSet(items) {
     chrome.storage.local.set(items, resolve);
   });
 }
+
+export const VALID_REMINDER_ID = /^[a-zA-Z0-9-]+$/;
+
+export function isValidTask(t) {
+  return (
+    t !== null &&
+    typeof t === "object" &&
+    typeof t.id === "string" &&
+    typeof t.task === "string" &&
+    typeof t.createdAt === "number" &&
+    (typeof t.reminderAt === "number" || t.reminderAt === null) &&
+    (typeof t.reminderIntervalMs === "number" || t.reminderIntervalMs === null) &&
+    typeof t.status === "string"
+  );
+}

@@ -1,4 +1,4 @@
-import { getTaskStatus, storageGet, storageSet } from "./utilities.js";
+import { getTaskStatus, storageGet, storageSet, VALID_REMINDER_ID, isValidTask } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
 const REMINDER_MINUTES = 5;
@@ -12,8 +12,40 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.clearAll();
 });
 
-// Whenever ANY alarm goes off, the extension checks if it is its reminder alarm. If so, it searches for the task details by using the
-// task ID stored under reminderTaskId, and shows a notification to check on status of the task
+// Validate data shape on every storage write; reset to defaults if corrupted
+chrome.storage.local.onChanged.addListener(async (changes) => {
+  const corrections = {};
+
+  if (REMINDER_KEY in changes) {
+    const val = changes[REMINDER_KEY].newValue;
+    if (val !== null && (typeof val !== "string" || !VALID_REMINDER_ID.test(val))) {
+      corrections[REMINDER_KEY] = null;
+    }
+  }
+
+  // If tasks array is malformed or contains invalid entries, reset to empty array. Also enforce only 1 in-progress task at a time.
+  if (TASKS_KEY in changes) {
+    const val = changes[TASKS_KEY].newValue;
+    if (!Array.isArray(val) || !val.every(isValidTask)) {
+      corrections[TASKS_KEY] = [];
+    } else {
+      const inProgressCount = val.filter(task => getTaskStatus(task) === "in-progress").length;
+      if (inProgressCount > 1) {
+        corrections[TASKS_KEY] = [];
+      }
+    }
+  }
+
+  if (Object.keys(corrections).length) {
+    await storageSet(corrections);
+  }
+});
+
+/*
+ * Whenever ANY alarm goes off, the extension checks if it is its reminder alarm. If so, it searches
+ * for the task details by using the task ID stored under reminderTaskId, and shows a notification
+ * to check on the user's focus on the task.
+ */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== REMINDER_ALARM) return;
 
@@ -32,6 +64,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     message: `You promised to work on: ${entry.task}`,
     priority: 2,
     requireInteraction: true,
+    silent: true,
     buttons: [
       { title: "Yes, still at it" },
       { title: "No, I drifted..." },
@@ -41,15 +74,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
   // Check if this is the initial reminder notification by looking for the unique prefix in the notification ID
-  // Reminder -> completion check dialog
   if (notificationId.startsWith("reminder-")) {
 
     // Remove the prefix to get the original task ID for follow-up actions
     const taskId = notificationId.replace("reminder-", "");
     chrome.notifications.clear(notificationId);
 
-    // If user clicks "Yes, still at it", extension shows a follow-up notification to confirm if they have completed the task or not.
-    // If "No, I drifted...", extension simply encourages them to get back on track.
+    /*
+     * If user clicks "Yes, still at it", extension shows a follow-up notification to confirm
+     * if they have completed the task or not. If "No, I drifted..." is selected, 
+     * extension simply encourages them to get back on track.
+     */
     if (buttonIndex === 0) {
       const completionId = `completion-${taskId}`;
       chrome.notifications.create(completionId, {
@@ -58,6 +93,7 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
         title: "Are you done by any chance?",
         message: "If yes, let's get it off the list.",
         requireInteraction: true,
+        silent: true,
         buttons: [
           { title: "Yes, all settled" },
           { title: "No, still working on it" },
@@ -70,7 +106,10 @@ chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) =
     return;
   }
 
-  // Completion dialog responses
+  /* Completion notification dialog response handler:
+   * If user confirms completion, task is marked as completed and removed from active reminders. 
+   * If not, reminder is extended with a more aggressive interval to encourage completion.
+   */
   if (notificationId.startsWith("completion-")) {
     
     const taskId = notificationId.replace("completion-", "");
@@ -126,6 +165,7 @@ async function markTaskComplete(taskId) {
     title: "Well done!",
     message: "Mission accomplished.",
     requireInteraction: false,
+    silent: true
   });
 }
 
@@ -148,9 +188,8 @@ async function extendTaskReminder(taskId, extensionType) {
   };
 
   await storageSet({ [TASKS_KEY]: tasks, [REMINDER_KEY]: taskId });
-  chrome.alarms.clear(REMINDER_ALARM, () => {
-    chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: getDelayMinutes(nextInterval) });
-  });
+  await chrome.alarms.clear(REMINDER_ALARM);
+  await chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: getDelayMinutes(nextInterval) });
 
   chrome.notifications.create({
     type: "basic",
@@ -158,5 +197,6 @@ async function extendTaskReminder(taskId, extensionType) {
     title: "Keep going. I've refreshed the reminder.",
     message: `I'll check again in ${Math.ceil(nextInterval / 60000)} min. If you finish it before that, mark it complete so I don't annoy you.`,
     requireInteraction: false,
+    silent: true
   });
 }
