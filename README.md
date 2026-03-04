@@ -2,6 +2,8 @@
 
 A cheeky new-tab override that makes you declare your intent, stores it locally, and nudges you to stick with one mission at a time. Because multitasking is a myth.
 
+![Friction Tab live screenshot](live-screenshot.png)
+
 ## Features
 - New tab is replaced with a focused prompt that only allows one in-progress mission; new entries are blocked until the user finishes or clears the current one.
 - Mission input is capped at 70 characters to keep pledges short and actionable.
