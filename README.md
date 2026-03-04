@@ -1,4 +1,4 @@
-# Friction Tab
+# 🫠 Friction Tab
 
 A cheeky new-tab override that makes you declare your intent, stores it locally, and nudges you to stick with one mission at a time. Because multitasking is a myth.
 
