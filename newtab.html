@@ -13,14 +13,14 @@
 <body>
   <main class="shell">
     <header class="hero">
-      <p class="eyebrow">Friction Tab</p>
-      <h1>State the mission at hand.</h1>
-      <p class="sub">Multitasking is a myth. This extension helps you stay singularly focused.</p>
+      <p class="eyebrow">🫠 Friction Tab</p>
+      <h1>Multitasking is a myth.</h1>
+      <p class="sub">This extension helps you stay singularly focused.</p>
     </header>
 
     <section class="card">
       <form id="intent-form" autocomplete="off">
-        <label for="intent" class="eyebrow">What are you about to do?</label>
+        <label for="intent" class="eyebrow">State the mission at hand</label>
         <div class="input-row">
           <input id="intent" name="intent" type="text" maxlength="70" placeholder="Example: Read the design doc for 10 minutes" required />
           <button type="submit" class="primary">Lock it in</button>
@@ -46,6 +46,15 @@
       </div>
       <ul class="task-list" id="task-list" aria-live="polite"></ul>
       <button id="clear-btn" class="task-clear" type="button">Clear all tasks</button>
+    </section>
+
+    <section class="settings-inline" aria-label="Reminder settings">
+      <p class="micro settings-copy">Initial reminder duration: <span id="initial-reminder-display">5</span> minutes</p>
+      <div class="settings-controls">
+        <input id="initial-reminder-input" type="number" min="1" max="10" step="1" value="5" hidden />
+        <button id="initial-reminder-edit" class="settings-btn" type="button">✏️</button>
+        <button id="initial-reminder-save" class="settings-btn" type="button" hidden>💾</button>
+      </div>
     </section>
   </main>
   <div id="confetti-layer" aria-hidden="true"></div>

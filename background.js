@@ -1,8 +1,10 @@
 import { getTaskStatus, storageGet, storageSet, VALID_REMINDER_ID, isValidTask } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
-const REMINDER_MINUTES = 5;
-const BASE_REMINDER_MS = REMINDER_MINUTES * 60 * 1000;
+const INITIAL_REMINDER_MINUTES = 5;
+const MIN_REMINDER_MINUTES = 1;
+const MAX_REMINDER_MINUTES = 10;
+const INITIAL_REMINDER_MINUTES_KEY = "initialReminderMinutes";
 const ICON_PATH = "icons/icon128.png"; // Notifications require PNG
 const TASKS_KEY = "tasks";
 const REMINDER_KEY = "reminderTaskId";
@@ -24,6 +26,14 @@ chrome.storage.local.onChanged.addListener(async (changes) => {
     const val = changes[REMINDER_KEY].newValue;
     if (val !== null && (typeof val !== "string" || !VALID_REMINDER_ID.test(val))) {
       corrections[REMINDER_KEY] = null;
+    }
+  }
+
+  if (INITIAL_REMINDER_MINUTES_KEY in changes) {
+    const val = changes[INITIAL_REMINDER_MINUTES_KEY].newValue;
+    const parsed = Number(val);
+    if (!Number.isInteger(parsed) || parsed < MIN_REMINDER_MINUTES || parsed > MAX_REMINDER_MINUTES) {
+      corrections[INITIAL_REMINDER_MINUTES_KEY] = INITIAL_REMINDER_MINUTES;
     }
   }
 
@@ -163,6 +173,20 @@ function getDelayMinutes(intervalMs) {
   return Math.max(0.25, intervalMs / 60000);
 }
 
+async function getInitialReminderMs() {
+  try {
+    const data = await storageGet({ [INITIAL_REMINDER_MINUTES_KEY]: INITIAL_REMINDER_MINUTES });
+    const parsed = Number(data[INITIAL_REMINDER_MINUTES_KEY]);
+    if (!Number.isInteger(parsed) || parsed < MIN_REMINDER_MINUTES || parsed > MAX_REMINDER_MINUTES) {
+      return INITIAL_REMINDER_MINUTES * 60 * 1000;
+    }
+    return parsed * 60 * 1000;
+  } catch (error) {
+    console.error("Failed to load initial reminder minutes in background", error);
+    return INITIAL_REMINDER_MINUTES * 60 * 1000;
+  }
+}
+
 async function markTaskComplete(taskId) {
   try {
     const data = await storageGet({ [TASKS_KEY]: [], [REMINDER_KEY]: null });
@@ -201,9 +225,10 @@ async function extendTaskReminder(taskId, extensionType) {
     if (idx === -1) return;
 
     const current = tasks[idx];
-    const prevInterval = current.reminderIntervalMs || BASE_REMINDER_MS;
+    const initialReminderMs = await getInitialReminderMs();
+    const prevInterval = current.reminderIntervalMs || initialReminderMs;
     // Drifting results in a more aggressive reminder interval than staying focused
-    const nextInterval = extensionType === "focused" ? prevInterval * 3 : prevInterval * 1.5;
+    const nextInterval = extensionType === "focused" ? prevInterval * 3 : prevInterval * 2;
     const nextReminderAt = Date.now() + nextInterval;
 
     tasks[idx] = {

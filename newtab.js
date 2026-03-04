@@ -10,15 +10,22 @@ import {
 } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
-const BASE_REMINDER_MINUTES = 0.25;
-const BASE_REMINDER_MS = BASE_REMINDER_MINUTES * 60 * 1000;
+const INITIAL_REMINDER_MINUTES = 5;
+const MIN_REMINDER_MINUTES = 1;
+const MAX_REMINDER_MINUTES = 10;
+const INITIAL_REMINDER_MINUTES_KEY = "initialReminderMinutes";
 const TASKS_KEY = "tasks";
 const REMINDER_KEY = "reminderTaskId";
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+let initialReminderMinutes = INITIAL_REMINDER_MINUTES;
 
 const form = document.getElementById("intent-form");
 const input = document.getElementById("intent");
 const statusEl = document.getElementById("status");
+const initialReminderDisplay = document.getElementById("initial-reminder-display");
+const initialReminderInput = document.getElementById("initial-reminder-input");
+const initialReminderEditBtn = document.getElementById("initial-reminder-edit");
+const initialReminderSaveBtn = document.getElementById("initial-reminder-save");
 const latestText = document.getElementById("latest-text");
 const latestMeta = document.getElementById("latest-meta");
 const reminderPill = document.getElementById("reminder-pill");
@@ -63,14 +70,15 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  const reminderIntervalMs = initialReminderMinutes * 60 * 1000;
   const createdAt = Date.now();
-  const reminderAt = createdAt + BASE_REMINDER_MS;
+  const reminderAt = createdAt + reminderIntervalMs;
   const entry = {
     id: generateId(),
     task: value,
     createdAt,
     reminderAt,
-    reminderIntervalMs: BASE_REMINDER_MS,
+    reminderIntervalMs: reminderIntervalMs,
     status: "in-progress",
   };
 
@@ -83,7 +91,7 @@ form.addEventListener("submit", async (event) => {
   modalDismissed = true;
   if (modalEl) modalEl.hidden = true;
 
-  statusEl.textContent = `Locked in. I will tap your shoulder in ${BASE_REMINDER_MINUTES} minutes.`;
+  statusEl.textContent = `Locked in. I will tap your shoulder in ${initialReminderMinutes} minute${initialReminderMinutes === 1 ? "" : "s"}.`;
   input.value = "";
   await refreshTasksDisplay(updatedTasks);
 });
@@ -112,12 +120,40 @@ if (clearBtn) {
   });
 }
 
+if (initialReminderEditBtn) {
+  initialReminderEditBtn.addEventListener("click", () => {
+    setInitialReminderEditMode(true);
+  });
+}
+
+if (initialReminderSaveBtn) {
+  initialReminderSaveBtn.addEventListener("click", async () => {
+    await saveInitialReminderMinutesFromInput();
+  });
+}
+
+if (initialReminderInput) {
+  initialReminderInput.addEventListener("keydown", async (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      await saveInitialReminderMinutesFromInput();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setInitialReminderEditMode(false);
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   init();
 });
 
 async function init() {
   await initializeTaskStore();
+  await initializeInitialReminderMinutesSetting();
   renderNotificationPermissionStatus();
   await refreshTasksDisplay();
 }
@@ -128,6 +164,92 @@ async function initializeTaskStore() {
   if (prunedTasks.length !== allTasks.length) {
     // Only update storage if there are tasks to prune to avoid unnecessary writes
     await saveTasksToStorage(prunedTasks);
+  }
+}
+
+async function initializeInitialReminderMinutesSetting() {
+  let shouldPersistNormalizedValue = false;
+
+  try {
+    const data = await storageGet({ [INITIAL_REMINDER_MINUTES_KEY]: INITIAL_REMINDER_MINUTES });
+    const rawValue = data[INITIAL_REMINDER_MINUTES_KEY];
+    const normalizedValue = normalizeReminderMinutes(rawValue);
+    initialReminderMinutes = normalizedValue;
+    shouldPersistNormalizedValue = rawValue !== normalizedValue;
+  } catch (error) {
+    console.error("Failed to load initial reminder minutes", error);
+    initialReminderMinutes = INITIAL_REMINDER_MINUTES;
+  }
+
+  if (shouldPersistNormalizedValue) {
+    try {
+      await storageSet({ [INITIAL_REMINDER_MINUTES_KEY]: initialReminderMinutes });
+    } catch (error) {
+      console.error("Failed to normalize initial reminder minutes", error);
+    }
+  }
+
+  renderInitialReminderSetting();
+  setInitialReminderEditMode(false);
+}
+
+function normalizeReminderMinutes(value) {
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue)) return INITIAL_REMINDER_MINUTES;
+  const rounded = Math.round(parsedValue);
+  return Math.min(MAX_REMINDER_MINUTES, Math.max(MIN_REMINDER_MINUTES, rounded));
+}
+
+function isValidReminderMinutesInput(value) {
+  const parsedValue = Number(value);
+  return Number.isInteger(parsedValue) && parsedValue >= MIN_REMINDER_MINUTES && parsedValue <= MAX_REMINDER_MINUTES;
+}
+
+function renderInitialReminderSetting() {
+  if (initialReminderDisplay) {
+    initialReminderDisplay.textContent = String(initialReminderMinutes);
+  }
+  if (initialReminderInput) {
+    initialReminderInput.value = String(initialReminderMinutes);
+  }
+}
+
+function setInitialReminderEditMode(isEditing) {
+  if (initialReminderEditBtn) initialReminderEditBtn.hidden = isEditing;
+  if (initialReminderSaveBtn) initialReminderSaveBtn.hidden = !isEditing;
+  if (initialReminderInput) {
+    initialReminderInput.hidden = !isEditing;
+    if (isEditing) {
+      initialReminderInput.value = String(initialReminderMinutes);
+      initialReminderInput.focus();
+      initialReminderInput.select();
+    }
+  }
+}
+
+async function saveInitialReminderMinutesFromInput() {
+  if (!initialReminderInput) return;
+
+  const enteredValue = initialReminderInput.value.trim();
+  if (!isValidReminderMinutesInput(enteredValue)) {
+    statusEl.textContent = `Initial reminder must be a whole number between ${MIN_REMINDER_MINUTES} and ${MAX_REMINDER_MINUTES}.`;
+    return;
+  }
+
+  const nextValue = normalizeReminderMinutes(enteredValue);
+  const previousValue = initialReminderMinutes;
+  initialReminderMinutes = nextValue;
+  renderInitialReminderSetting();
+
+  try {
+    await storageSet({ [INITIAL_REMINDER_MINUTES_KEY]: nextValue });
+    statusEl.textContent = `Initial reminder duration set to ${nextValue} minute${nextValue === 1 ? "" : "s"}.`;
+    setInitialReminderEditMode(false);
+  } catch (error) {
+    console.error("Failed to save initial reminder minutes", error);
+    initialReminderMinutes = previousValue;
+    renderInitialReminderSetting();
+    statusEl.textContent = "Could not save initial reminder setting. Try again.";
   }
 }
 
@@ -347,12 +469,15 @@ async function requestNotificationPermission(forceRequest = false) {
   }
 }
 
-async function scheduleReminder(taskId) {
+async function scheduleReminder(taskId, intervalMs) {
   try {
     await storageSet({ [REMINDER_KEY]: taskId });
     await new Promise((resolve) => {
       chrome.alarms.clear(REMINDER_ALARM, () => {
-        chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: BASE_REMINDER_MINUTES });
+        const fallbackDelayMs = initialReminderMinutes * 60 * 1000;
+        const delayMs = typeof intervalMs === "number" && Number.isFinite(intervalMs) ? intervalMs : fallbackDelayMs;
+        const delayInMinutes = Math.max(MIN_REMINDER_MINUTES, delayMs / 60000);
+        chrome.alarms.create(REMINDER_ALARM, { delayInMinutes });
         resolve();
       });
     });
