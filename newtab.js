@@ -41,6 +41,11 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (value.length > 70) {
+    statusEl.textContent = "Let's keep it short and sweet. Condense that into 70 characters or less.";
+    return;
+  }
+
   const existingTasks = await loadAndSortTasksFromStorage();
   /*
    * If there is an active task, the extension won't allow creating a new one.
