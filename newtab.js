@@ -243,11 +243,6 @@ function buildTaskMeta(task) {
   return `In progress · Logged ${created}`;
 }
 
-function formatStatus(status) {
-  return status === "completed" ? "Completed" : "In progress";
-}
-
-
 async function completeTask(taskId) {
   const tasks = await loadTasks();
   let changed = false;
