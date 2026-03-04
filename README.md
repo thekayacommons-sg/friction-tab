@@ -35,4 +35,4 @@ A cheeky new-tab override that makes you declare your intent, stores it locally,
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+This project is licensed under the **MIT License**.
