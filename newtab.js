@@ -269,9 +269,13 @@ async function completeTask(taskId) {
   if (!changed) return;
 
   await saveTasksToStorage(updated);
-  const { [REMINDER_KEY]: reminderTaskId } = await storageGet({ [REMINDER_KEY]: null });
-  if (reminderTaskId === taskId) {
-    await clearReminder();
+  try {
+    const { [REMINDER_KEY]: reminderTaskId } = await storageGet({ [REMINDER_KEY]: null });
+    if (reminderTaskId === taskId) {
+      await clearReminder();
+    }
+  } catch (error) {
+    console.error("Failed to check active reminder", error);
   }
 
   statusEl.textContent = "Task marked complete. Proud of you.";
@@ -293,13 +297,24 @@ async function clearAllTasksAndReminder() {
 }
 
 async function loadAndSortTasksFromStorage() {
-  const data = await storageGet({ [TASKS_KEY]: [] });
-  const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
-  return sortTasks(tasks);
+  try {
+    const data = await storageGet({ [TASKS_KEY]: [] });
+    const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
+    return sortTasks(tasks);
+  } catch (error) {
+    console.error("Failed to load tasks from storage", error);
+    statusEl.textContent = "I could not read tasks from storage.";
+    return [];
+  }
 }
 
 async function saveTasksToStorage(tasks) {
-  await storageSet({ [TASKS_KEY]: sortTasks(tasks) });
+  try {
+    await storageSet({ [TASKS_KEY]: sortTasks(tasks) });
+  } catch (error) {
+    console.error("Failed to save tasks to storage", error);
+    statusEl.textContent = "I could not save your tasks. Try again.";
+  }
 }
 
 function renderNotificationPermissionStatus() {
@@ -323,25 +338,40 @@ async function requestNotificationPermission(forceRequest = false) {
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied" && !forceRequest) return "denied";
   // Else if permission is default or not yet requested, ask for permission
-  const result = await Notification.requestPermission();
-  return result;
+  try {
+    const result = await Notification.requestPermission();
+    return result;
+  } catch (error) {
+    console.error("Notification permission request failed", error);
+    return "denied";
+  }
 }
 
 async function scheduleReminder(taskId) {
-  await storageSet({ [REMINDER_KEY]: taskId });
-  await new Promise((resolve) => {
-    chrome.alarms.clear(REMINDER_ALARM, () => {
-      chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: BASE_REMINDER_MINUTES });
-      resolve();
+  try {
+    await storageSet({ [REMINDER_KEY]: taskId });
+    await new Promise((resolve) => {
+      chrome.alarms.clear(REMINDER_ALARM, () => {
+        chrome.alarms.create(REMINDER_ALARM, { delayInMinutes: BASE_REMINDER_MINUTES });
+        resolve();
+      });
     });
-  });
+  } catch (error) {
+    console.error("Failed to schedule reminder", error);
+    statusEl.textContent = "Could not schedule reminder. Please retry.";
+  }
 }
 
 async function clearReminder() {
-  await storageSet({ [REMINDER_KEY]: null });
-  await new Promise((resolve) => {
-    chrome.alarms.clear(REMINDER_ALARM, resolve);
-  });
+  try {
+    await storageSet({ [REMINDER_KEY]: null });
+    await new Promise((resolve) => {
+      chrome.alarms.clear(REMINDER_ALARM, resolve);
+    });
+  } catch (error) {
+    console.error("Failed to clear reminder", error);
+    statusEl.textContent = "Could not clear reminder.";
+  }
 }
 
 /*
