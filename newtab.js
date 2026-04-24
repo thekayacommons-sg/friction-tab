@@ -304,12 +304,12 @@ function setSettingsDropdownOpen(isOpen) {
 async function initializeSiteChangeNagSetting() {
   if (!siteChangeNagToggle) return;
 
-  let isEnabled = true;
+  let isEnabled = false;
   let shouldPersistNormalizedValue = false;
 
   try {
-    const data = await storageGet({ [SITE_CHANGE_NAG_ENABLED_KEY]: true });
-    isEnabled = typeof data[SITE_CHANGE_NAG_ENABLED_KEY] === "boolean" ? data[SITE_CHANGE_NAG_ENABLED_KEY] : true;
+    const data = await storageGet({ [SITE_CHANGE_NAG_ENABLED_KEY]: false });
+    isEnabled = typeof data[SITE_CHANGE_NAG_ENABLED_KEY] === "boolean" ? data[SITE_CHANGE_NAG_ENABLED_KEY] : false;
     shouldPersistNormalizedValue = typeof data[SITE_CHANGE_NAG_ENABLED_KEY] !== "boolean";
   } catch (error) {
     console.error("Failed to load site-change nag setting", error);

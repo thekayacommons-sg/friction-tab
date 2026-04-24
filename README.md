@@ -12,7 +12,7 @@ A cheeky new-tab override that makes you declare your intent, stores it locally,
 - Completion paths everywhere: inline buttons, modal prompt on tab open when an active mission exists, and notification actions.
 - Initial reminder timing is configurable directly in the UI (default 5 minutes, allowed range 1-10) via a small bottom-page setting with edit/save controls.
 - Optional "site-change nag" can fire when you switch to a different website on a tab without any active mission: this is to be ultra-annoying about being intentional.
-  - It can be turned off independently from reminder notifications. A nag is triggered at most once every 15s, even if there are multiple site switches in that interval.
+  - It can be turned off independently from reminder notifications and is off by default. A nag is triggered at most once every 15s, even if there are multiple site switches in that interval.
 - Reminders arm automatically for the active mission; notification buttons either extend the interval (gentler if focused, tighter if drifting) or mark the task as complete.
 - All data stays local via `chrome.storage.local` through small helpers (`storageGet`/`storageSet`) to keep the service worker and UI consistent.
 

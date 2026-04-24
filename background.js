@@ -47,7 +47,7 @@ chrome.storage.local.onChanged.addListener(async (changes) => {
   if (SITE_CHANGE_NAG_ENABLED_KEY in changes) {
     const val = changes[SITE_CHANGE_NAG_ENABLED_KEY].newValue;
     if (typeof val !== "boolean") {
-      corrections[SITE_CHANGE_NAG_ENABLED_KEY] = true;
+      corrections[SITE_CHANGE_NAG_ENABLED_KEY] = false;
     }
   }
 
@@ -199,7 +199,7 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
   try {
     const data = await storageGet({
       [TASKS_KEY]: [],
-      [SITE_CHANGE_NAG_ENABLED_KEY]: true,
+      [SITE_CHANGE_NAG_ENABLED_KEY]: false,
       [SITE_CHANGE_NAG_LAST_AT_KEY]: 0,
     });
     if (data[SITE_CHANGE_NAG_ENABLED_KEY] !== true) return;
