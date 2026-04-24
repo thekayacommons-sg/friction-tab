@@ -1,13 +1,19 @@
-import { getTaskStatus, storageGet, storageSet, VALID_REMINDER_ID, isValidTask } from "./utilities.js";
+import { getTaskStatus, hasActiveTask, storageGet, storageSet, VALID_REMINDER_ID, isValidTask, getHttpHost } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
 const INITIAL_REMINDER_MINUTES = 5;
 const MIN_REMINDER_MINUTES = 1;
 const MAX_REMINDER_MINUTES = 10;
 const INITIAL_REMINDER_MINUTES_KEY = "initialReminderMinutes";
+const SITE_CHANGE_NAG_ENABLED_KEY = "siteChangeNagEnabled";
 const ICON_PATH = "icons/icon128.png"; // Notifications require PNG
 const TASKS_KEY = "tasks";
 const REMINDER_KEY = "reminderTaskId";
+const SITE_CHANGE_NAG_NOTIFICATION_ID = "site-change-nag";
+const SITE_CHANGE_NAG_COOLDOWN_MS = 15000;
+const SITE_CHANGE_NAG_LAST_AT_KEY = "siteChangeNagLastAt";
+
+const lastCommittedHostByTab = new Map();
 
 // All alarms are cleared on extension install to prevent orphaned alarms from previous versions
 chrome.runtime.onInstalled.addListener(async () => {
@@ -18,7 +24,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
-// Validate data shape on every storage write; reset to defaults if corrupted
+// Validate all storage writes to ensure data integrity. If any value is malformed, reset it to a safe default.
+// In particular: validate tasks list data shape on every storage write; reset to defaults if corrupted
 chrome.storage.local.onChanged.addListener(async (changes) => {
   const corrections = {};
 
@@ -34,6 +41,20 @@ chrome.storage.local.onChanged.addListener(async (changes) => {
     const parsed = Number(val);
     if (!Number.isInteger(parsed) || parsed < MIN_REMINDER_MINUTES || parsed > MAX_REMINDER_MINUTES) {
       corrections[INITIAL_REMINDER_MINUTES_KEY] = INITIAL_REMINDER_MINUTES;
+    }
+  }
+
+  if (SITE_CHANGE_NAG_ENABLED_KEY in changes) {
+    const val = changes[SITE_CHANGE_NAG_ENABLED_KEY].newValue;
+    if (typeof val !== "boolean") {
+      corrections[SITE_CHANGE_NAG_ENABLED_KEY] = true;
+    }
+  }
+
+  if (SITE_CHANGE_NAG_LAST_AT_KEY in changes) {
+    const val = Number(changes[SITE_CHANGE_NAG_LAST_AT_KEY].newValue);
+    if (!Number.isFinite(val) || val < 0) {
+      corrections[SITE_CHANGE_NAG_LAST_AT_KEY] = 0;
     }
   }
 
@@ -153,11 +174,61 @@ chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIn
 chrome.notifications.onClicked.addListener(async (notificationId) => {
   try {
     await chrome.notifications.clear(notificationId);
+    // Clicking close on site change nag does not do anything
+    // Button exists solely to ensure it gets triggered and to draw attention to it since it won't disappear until interacted with
+    if (notificationId === SITE_CHANGE_NAG_NOTIFICATION_ID) {
+      return;
+    }
     const taskId = notificationId.substring(notificationId.indexOf("-") + 1);
     await extendTaskReminder(taskId, "focused");
   } catch (error) {
     console.error("Failed handling notification click", error);
   }
+});
+
+chrome.webNavigation.onCommitted.addListener(async (details) => {
+  if (details.frameId !== 0) return;
+
+  const nextHost = getHttpHost(details.url);
+  if (!nextHost) return;
+
+  const previousHost = lastCommittedHostByTab.get(details.tabId);
+  lastCommittedHostByTab.set(details.tabId, nextHost);
+  if (previousHost === nextHost) return;
+
+  try {
+    const data = await storageGet({
+      [TASKS_KEY]: [],
+      [SITE_CHANGE_NAG_ENABLED_KEY]: true,
+      [SITE_CHANGE_NAG_LAST_AT_KEY]: 0,
+    });
+    if (data[SITE_CHANGE_NAG_ENABLED_KEY] !== true) return;
+
+    // const tasks = Array.isArray(data[TASKS_KEY]) ? data[TASKS_KEY] : [];
+    // If active task exists, do not bother the user with nags about switching sites
+    if (hasActiveTask(data[TASKS_KEY])) return;
+
+    const now = Date.now();
+    const lastSiteChangeNagAt = Number(data[SITE_CHANGE_NAG_LAST_AT_KEY]) || 0;
+    if (now - lastSiteChangeNagAt < SITE_CHANGE_NAG_COOLDOWN_MS) return;
+
+    await chrome.notifications.create(SITE_CHANGE_NAG_NOTIFICATION_ID, {
+      type: "basic",
+      iconUrl: ICON_PATH,
+      title: "No mission detected",
+      message: "You just switched sites without an active mission. Declare one before you wander.",
+      priority: 1,
+      requireInteraction: true,
+      silent: true,
+    });
+    await storageSet({ [SITE_CHANGE_NAG_LAST_AT_KEY]: now });
+  } catch (error) {
+    console.error("Failed during site-change nag handling", error);
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  lastCommittedHostByTab.delete(tabId);
 });
 
 function findReminderTarget(tasks, reminderTaskId) {

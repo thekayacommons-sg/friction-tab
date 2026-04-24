@@ -44,6 +44,16 @@ export function storageSet(items) {
   });
 }
 
+export function getHttpHost(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.host;
+  } catch (error) {
+    return null;
+  }
+}
+
 export const VALID_REMINDER_ID = /^[a-zA-Z0-9-]+$/;
 
 export function isValidTask(t) {

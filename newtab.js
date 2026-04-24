@@ -14,18 +14,24 @@ const INITIAL_REMINDER_MINUTES = 5;
 const MIN_REMINDER_MINUTES = 1;
 const MAX_REMINDER_MINUTES = 10;
 const INITIAL_REMINDER_MINUTES_KEY = "initialReminderMinutes";
+const SITE_CHANGE_NAG_ENABLED_KEY = "siteChangeNagEnabled";
 const TASKS_KEY = "tasks";
 const REMINDER_KEY = "reminderTaskId";
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+const SETTINGS_DROPDOWN_ANIMATION_MS = 170;
 let initialReminderMinutes = INITIAL_REMINDER_MINUTES;
 
 const form = document.getElementById("intent-form");
 const input = document.getElementById("intent");
 const statusEl = document.getElementById("status");
+const settingsMenu = document.getElementById("settings-menu");
+const settingsToggleBtn = document.getElementById("settings-toggle");
+const settingsDropdown = document.getElementById("settings-dropdown");
 const initialReminderDisplay = document.getElementById("initial-reminder-display");
 const initialReminderInput = document.getElementById("initial-reminder-input");
 const initialReminderEditBtn = document.getElementById("initial-reminder-edit");
 const initialReminderSaveBtn = document.getElementById("initial-reminder-save");
+const siteChangeNagToggle = document.getElementById("site-change-nag-toggle");
 const latestText = document.getElementById("latest-text");
 const latestMeta = document.getElementById("latest-meta");
 const reminderPill = document.getElementById("reminder-pill");
@@ -39,6 +45,8 @@ const modalCompleteBtn = document.getElementById("modal-complete");
 const modalDismissBtn = document.getElementById("modal-dismiss");
 const modalTaskName = document.getElementById("modal-task-name");
 let modalDismissed = false;
+// Keeps a pending close timeout so the dropdown can finish its exit animation and prevents stale close timers when quickly reopening.
+let settingsDropdownCloseTimer = null;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -147,6 +155,44 @@ if (initialReminderInput) {
   });
 }
 
+if (siteChangeNagToggle) {
+  siteChangeNagToggle.addEventListener("change", async () => {
+    const isEnabled = siteChangeNagToggle.checked;
+    try {
+      await storageSet({ [SITE_CHANGE_NAG_ENABLED_KEY]: isEnabled });
+      statusEl.textContent = isEnabled
+        ? "Site-change nag is enabled. Wandering without a mission will be called out."
+        : "Site-change nag is disabled. Regular mission reminders still work.";
+    } catch (error) {
+      console.error("Failed to save site-change nag setting", error);
+      siteChangeNagToggle.checked = !isEnabled;
+      statusEl.textContent = "Could not save site-change nag setting. Try again.";
+    }
+  });
+}
+
+// Toggle the settings dropdown when the gear is clicked
+if (settingsToggleBtn && settingsDropdown) {
+  settingsToggleBtn.addEventListener("click", () => {
+    const willOpen = settingsDropdown.hidden;
+    setSettingsDropdownOpen(willOpen);
+  });
+}
+
+// Close the dropdown when clicking anywhere outside the settings menu
+document.addEventListener("click", (event) => {
+  if (!settingsMenu || settingsDropdown?.hidden) return;
+  if (!settingsMenu.contains(event.target)) {
+    setSettingsDropdownOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setSettingsDropdownOpen(false);
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   init();
 });
@@ -154,6 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
 async function init() {
   await initializeTaskStore();
   await initializeInitialReminderMinutesSetting();
+  await initializeSiteChangeNagSetting();
   renderNotificationPermissionStatus();
   await refreshTasksDisplay();
 }
@@ -223,6 +270,58 @@ function setInitialReminderEditMode(isEditing) {
       initialReminderInput.value = String(initialReminderMinutes);
       initialReminderInput.focus();
       initialReminderInput.select();
+    }
+  }
+}
+
+// Function to open or close the settings dropdown with animation and proper cleanup of pending close timers to prevent bugs when quickly toggling the dropdown
+// Note: setTimeout provides a delay before performing an action
+function setSettingsDropdownOpen(isOpen) {
+  if (!settingsDropdown || !settingsToggleBtn) return;
+
+  if (settingsDropdownCloseTimer) {
+    clearTimeout(settingsDropdownCloseTimer);
+    settingsDropdownCloseTimer = null;
+  }
+
+  if (isOpen) {
+    settingsDropdown.hidden = false;
+    // Wait one frame so the browser applies the unhidden base state before adding the open class, which allows the transition to animate
+    requestAnimationFrame(() => {
+      settingsDropdown.classList.add("open");
+    });
+  } else {
+    settingsDropdown.classList.remove("open");
+    settingsDropdownCloseTimer = setTimeout(() => {
+      settingsDropdown.hidden = true;
+      settingsDropdownCloseTimer = null;
+    }, SETTINGS_DROPDOWN_ANIMATION_MS);
+  }
+
+  settingsToggleBtn.setAttribute("aria-expanded", String(isOpen));
+}
+
+async function initializeSiteChangeNagSetting() {
+  if (!siteChangeNagToggle) return;
+
+  let isEnabled = true;
+  let shouldPersistNormalizedValue = false;
+
+  try {
+    const data = await storageGet({ [SITE_CHANGE_NAG_ENABLED_KEY]: true });
+    isEnabled = typeof data[SITE_CHANGE_NAG_ENABLED_KEY] === "boolean" ? data[SITE_CHANGE_NAG_ENABLED_KEY] : true;
+    shouldPersistNormalizedValue = typeof data[SITE_CHANGE_NAG_ENABLED_KEY] !== "boolean";
+  } catch (error) {
+    console.error("Failed to load site-change nag setting", error);
+  }
+
+  siteChangeNagToggle.checked = isEnabled;
+
+  if (shouldPersistNormalizedValue) {
+    try {
+      await storageSet({ [SITE_CHANGE_NAG_ENABLED_KEY]: isEnabled });
+    } catch (error) {
+      console.error("Failed to normalize site-change nag setting", error);
     }
   }
 }

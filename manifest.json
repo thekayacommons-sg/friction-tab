@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Friction Tab",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Multitasking is a myth. A little friction and a little enforcement go a long way in retaining focus.",
-  "permissions": ["storage", "notifications", "alarms"],
+  "permissions": ["storage", "notifications", "alarms", "webNavigation", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

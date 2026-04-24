@@ -47,15 +47,32 @@
       <ul class="task-list" id="task-list" aria-live="polite"></ul>
       <button id="clear-btn" class="task-clear" type="button">Clear all tasks</button>
     </section>
+    
+    <div class="settings-menu" id="settings-menu">
+      <button id="settings-toggle" class="settings-gear" type="button" aria-expanded="false" aria-controls="settings-dropdown" aria-label="Open settings">
+        &#9881;
+      </button>
+      <section id="settings-dropdown" class="settings-dropdown" aria-label="Extension settings" hidden>
+        <div class="settings-row" aria-label="Reminder settings">
+          <p class="micro settings-copy">Initial reminder duration: <span id="initial-reminder-display">5</span> minutes</p>
+          <div class="settings-controls">
+            <input id="initial-reminder-input" type="number" min="1" max="10" step="1" value="5" hidden />
+            <button id="initial-reminder-edit" class="settings-btn" type="button">✏️</button>
+            <button id="initial-reminder-save" class="settings-btn" type="button" hidden>💾</button>
+          </div>
+        </div>
 
-    <section class="settings-inline" aria-label="Reminder settings">
-      <p class="micro settings-copy">Initial reminder duration: <span id="initial-reminder-display">5</span> minutes</p>
-      <div class="settings-controls">
-        <input id="initial-reminder-input" type="number" min="1" max="10" step="1" value="5" hidden />
-        <button id="initial-reminder-edit" class="settings-btn" type="button">✏️</button>
-        <button id="initial-reminder-save" class="settings-btn" type="button" hidden>💾</button>
-      </div>
-    </section>
+        <div class="settings-row" aria-label="Navigation reminder settings">
+          <label class="micro settings-copy settings-toggle" for="site-change-nag-toggle">
+            Annoy me when I change sites without a mission
+          </label>
+          <div class="settings-controls">
+            <input id="site-change-nag-toggle" type="checkbox" checked />
+          </div>
+        </div>
+      </section>
+    </div>
+    
   </main>
   <div id="confetti-layer" aria-hidden="true"></div>
   <div id="focus-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="focus-modal-title" aria-describedby="focus-modal-body" hidden>
