@@ -1,4 +1,4 @@
-import { getTaskStatus, hasActiveTask, storageGet, storageSet, VALID_REMINDER_ID, isValidTask, getHttpHost } from "./utilities.js";
+import { getTaskStatus, hasActiveTask, storageGet, storageSet, VALID_REMINDER_ID, isValidTask } from "./utilities.js";
 
 const REMINDER_ALARM = "friction-tab-reminder";
 const INITIAL_REMINDER_MINUTES = 5;
@@ -10,10 +10,8 @@ const ICON_PATH = "icons/icon128.png"; // Notifications require PNG
 const TASKS_KEY = "tasks";
 const REMINDER_KEY = "reminderTaskId";
 const SITE_CHANGE_NAG_NOTIFICATION_ID = "site-change-nag";
-const SITE_CHANGE_NAG_COOLDOWN_MS = 15000;
+const SITE_CHANGE_NAG_COOLDOWN_MS = 30000;
 const SITE_CHANGE_NAG_LAST_AT_KEY = "siteChangeNagLastAt";
-
-const lastCommittedHostByTab = new Map();
 
 // All alarms are cleared on extension install to prevent orphaned alarms from previous versions
 chrome.runtime.onInstalled.addListener(async () => {
@@ -189,13 +187,6 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 chrome.webNavigation.onCommitted.addListener(async (details) => {
   if (details.frameId !== 0) return;
 
-  const nextHost = getHttpHost(details.url);
-  if (!nextHost) return;
-
-  const previousHost = lastCommittedHostByTab.get(details.tabId);
-  lastCommittedHostByTab.set(details.tabId, nextHost);
-  if (previousHost === nextHost) return;
-
   try {
     const data = await storageGet({
       [TASKS_KEY]: [],
@@ -225,10 +216,6 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
   } catch (error) {
     console.error("Failed during site-change nag handling", error);
   }
-});
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  lastCommittedHostByTab.delete(tabId);
 });
 
 function findReminderTarget(tasks, reminderTaskId) {

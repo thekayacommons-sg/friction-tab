@@ -11,8 +11,7 @@ A cheeky new-tab override that makes you declare your intent, stores it locally,
 - Missions are timestamped, sorted newest-first, and completed items are automatically pruned after two days to keep storage tidy.
 - Completion paths everywhere: inline buttons, modal prompt on tab open when an active mission exists, and notification actions.
 - Initial reminder timing is configurable directly in the UI (default 5 minutes, allowed range 1-10) via a small bottom-page setting with edit/save controls.
-- Optional "site-change nag" can fire when you switch to a different website on a tab without any active mission: this is to be ultra-annoying about being intentional.
-  - It can be turned off independently from reminder notifications and is off by default. A nag is triggered at most once every 15s, even if there are multiple site switches in that interval.
+- Optional "site-change nag" can fire when you browse the web without any active mission: this is to be ultra-annoying about being intentional.
 - Reminders arm automatically for the active mission; notification buttons either extend the interval (gentler if focused, tighter if drifting) or mark the task as complete.
 - All data stays local via `chrome.storage.local` through small helpers (`storageGet`/`storageSet`) to keep the service worker and UI consistent.
 
@@ -36,7 +35,7 @@ A cheeky new-tab override that makes you declare your intent, stores it locally,
 - All task and reminder state is stored locally; helpers in utilities.js wrap `chrome.storage.local` for both UI and background.
 - Background validation guards malformed storage values and resets invalid reminder setting/task shapes to safe defaults.
 - If notifications are blocked, the new tab page will prompt the user to enable them before accepting a mission.
-- Site-change nag defaults to enabled and only triggers for main-frame HTTP/HTTPS navigation between different hosts when no mission is currently active.
+- Site-change nag defaults to disabled. When active, nags are triggered at most once every 30s even if there are multiple site switches (cross-site or intra-site) in that interval.
 
 ## License
 
